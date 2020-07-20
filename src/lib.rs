@@ -21,6 +21,9 @@ mod lists {
     pub struct Iter<'a, T> {
         next: Option<&'a Node<T>>,
     }
+    pub struct IterMut<'a, T> {
+        next: Option<&'a mut Node<T>>,
+    }
 
     impl<T> Iterator for IntoIter<T> {
         type Item = T;
@@ -28,6 +31,16 @@ mod lists {
             self.0.pop()
         }
 
+    }
+
+    impl<'a, T> Iterator for IterMut<'a, T> {
+        type Item = &'a mut T;
+        fn next(&mut self) -> Option<Self::Item> {
+            self.next.take().map(|node| {
+                self.next = node.next.as_mut().map(|node| &mut **node);
+                &mut node.item
+            })
+        }
     }
 
     impl<'a, T> Iterator for Iter<'a, T> {
@@ -46,6 +59,10 @@ mod lists {
     impl<'a, T> Stack<T> {
         pub fn new() -> Self {
             Self { head: None }
+        }
+
+        pub fn iter_mut(&mut self) -> IterMut<'_, T> {
+            IterMut{ next: self.head.as_mut().map(|node| &mut ** node) }
         }
 
         pub fn iter(&self) -> Iter<'_, T> {
