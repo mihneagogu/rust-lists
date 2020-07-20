@@ -1,10 +1,12 @@
-mod lists {
+pub mod lists {
 
     pub struct Stack<T> {
         head: Link<T>,
     }
 
     type Link<T> = Option<Box<Node<T>>>;
+
+    #[derive(Debug)]
     struct Node<T> {
         item: T,
         next: Link<T>,
@@ -142,6 +144,10 @@ mod tests {
 
         assert_eq!(stack.pop(), Some(1));
         assert_eq!(stack.pop(), None);
+
+        for node in stack.iter() { 
+            println!("{:?}", node);
+        }
     }
 
     #[test]
