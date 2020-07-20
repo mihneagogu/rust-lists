@@ -17,9 +17,43 @@ mod lists {
 
     }
 
-    impl<T> Stack<T> {
+    pub struct IntoIter<T>(Stack<T>);
+    pub struct Iter<'a, T> {
+        next: Option<&'a Node<T>>,
+    }
+
+    impl<T> Iterator for IntoIter<T> {
+        type Item = T;
+        fn next(&mut self) -> Option<Self::Item> {
+            self.0.pop()
+        }
+
+    }
+
+    impl<'a, T> Iterator for Iter<'a, T> {
+
+        type Item = &'a T;
+        fn next(&mut self) -> Option<Self::Item> {
+            self.next.map(|node| {
+                self.next = node.next.as_ref().map(|node| &**node);
+                &node.item
+            })
+        }
+
+
+    }
+
+    impl<'a, T> Stack<T> {
         pub fn new() -> Self {
             Self { head: None }
+        }
+
+        pub fn iter(&self) -> Iter<'_, T> {
+            Iter { next: self.head.as_ref().map(|node| &**node) }
+        }
+
+        pub fn into_iter(self) -> IntoIter<T> {
+            IntoIter(self)
         }
 
         pub fn push(&mut self, item: T) {
@@ -28,6 +62,14 @@ mod lists {
                 next: self.head.take(),
             });
             self.head = Some(new_node);
+        }
+
+        pub fn peek(&self) -> Option<&T> {
+            self.head.as_ref().map(|boxed| &boxed.item)
+        }
+
+        pub fn peek_mut(&mut self) -> Option<&mut T> {
+            self.head.as_mut().map(|boxed| &mut boxed.item)
         }
         
         pub fn pop(&mut self) -> Option<T> {
@@ -39,6 +81,21 @@ mod lists {
                 node.item
             })
         }
+    }
+
+    impl<T> Drop for Stack<T> {
+        
+        // When dropping the stack,
+        // we drop (5 lines under) all the boxes (get the Option<...>
+        // then let it get dropped, replacing it with None at the same time)
+        fn drop(&mut self) {
+            let mut curr_link = self.head.take();
+            while let Some(mut box_node) = curr_link {
+                curr_link = box_node.next.take();
+            }
+
+        }
+
     }
 
 }
@@ -70,4 +127,21 @@ mod tests {
         assert_eq!(stack.pop(), None);
     }
 
+    #[test]
+    fn peek() {
+        let mut stack = Stack::new();
+        assert_eq!(stack.peek(), None);
+        assert_eq!(stack.peek_mut(), None);
+        stack.push(1); stack.push(2); stack.push(3);
+
+        assert_eq!(stack.peek(), Some(&3));
+        assert_eq!(stack.peek_mut(), Some(&mut 3));
+
+        stack.peek_mut().map(|value| {
+            *value = 42
+        });
+
+        assert_eq!(stack.peek(), Some(&42));
+        assert_eq!(stack.pop(), Some(42));
+    }
 }
